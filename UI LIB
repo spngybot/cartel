@@ -325,18 +325,22 @@ end
             return enum_table
         end
 
-        function library:config_list_update() 
-            if not library.config_holder then return end; 
+        function library:config_list_update()
+            local config_files = listfiles(library.directory .. "/configs")
+            local config_names = {}
         
-            local list = {};
+            for _, file in ipairs(config_files) do
+                local name = file:match("([^/]+)%.cfg$")
+                if name then
+                    table.insert(config_names, name)
+                end
+            end
         
-            for idx, file in next, listfiles(library.directory .. "/configs") do
-                local name = file:gsub(library.directory .. "/configs\\", ""):gsub(library.directory .. "\\configs\\", ""):gsub(".cfg", "")
-                list[#list + 1] = name;
-            end;
-            
-            library.config_holder:refresh_options(list)
-        end 
+            -- Update the dropdown options
+            if library.config_holder then
+                library.config_holder:refresh_options(config_names)
+            end
+        end
 
         function library:get_config()
             local Config = {}
@@ -353,24 +357,23 @@ end
             
             return http_service:JSONEncode(Config)
         end
-
-        function library:load_config(config_json) 
+        function library:load_config(config_json)
             local config = http_service:JSONDecode(config_json)
         
-            for _, v in next, config do 
-                local function_set = library.config_flags[_]
+            for key, value in next, config do
+                local function_set = library.config_flags[key]
         
-                if function_set then 
-                    if type(v) == "table" and v["Transparency"] and v["Color"] then
-                        function_set(hex(v["Color"]), v["Transparency"])
-                    elseif type(v) == "table" and v["active"] then 
-                        function_set(v)
-                    else 
-                        function_set(v)
+                if function_set then
+                    if type(value) == "table" and value["Transparency"] and value["Color"] then
+                        function_set(Color3.fromHex(value["Color"]), value["Transparency"])
+                    elseif type(value) == "table" and value["active"] then
+                        function_set(value)
+                    else
+                        function_set(value)
                     end
-                end 
-            end 
-        end 
+                end
+            end
+        end
         
         function library:round(number, float) 
             local multiplier = 1 / (float or 1)
