@@ -1,268 +1,346 @@
-local UILibrary = {}
+local library = {}
+library.flags = {}
 
-function UILibrary.new()
-    local library = {
-        ui = {},
-        options = {},
+-- Initialize the library by creating a ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "MyUILibrary"
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+screenGui.Enabled = true -- Can be toggled later if needed
+
+-- Function to create a new window
+function library:CreateWindow(properties)
+    local windowProps = properties or {}
+    local window = Instance.new("Frame")
+    window.Name = windowProps.name or "Window"
+    window.Size = windowProps.size or UDim2.new(0, 835, 0, 615)
+    window.Position = windowProps.position or UDim2.new(0.15, 0, 0.07, 0)
+    window.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    window.BorderSizePixel = 0
+    window.Parent = screenGui
+
+    -- Sidebar for tab navigation
+    local sidebar = Instance.new("Frame")
+    sidebar.Name = "Sidebar"
+    sidebar.BackgroundColor3 = Color3.fromRGB(8, 19, 28)
+    sidebar.BorderSizePixel = 0
+    sidebar.Position = UDim2.new(0, 0, 0, 1)
+    sidebar.Size = UDim2.new(0, 191, 1, -1)
+    sidebar.Parent = window
+
+    -- Tab content area
+    local tabContent = Instance.new("Frame")
+    tabContent.Name = "TabContent"
+    tabContent.BackgroundColor3 = Color3.fromRGB(10, 12, 15)
+    tabContent.BorderSizePixel = 0
+    tabContent.Position = UDim2.new(0, 191, 0, 1)
+    tabContent.Size = UDim2.new(1, -191, 1, -1)
+    tabContent.Parent = window
+
+    -- Window object with methods
+    local windowObj = {
+        tabs = {},
+        selectedTab = nil,
+        sidebar = sidebar,
+        tabContent = tabContent
     }
 
-    -- Method to create the entire loader UI
-    function library:createLoaderUI(options)
-        self.options = options or {}
+    -- Method to add a tab
+    function windowObj:AddTab(properties)
+        local tabProps = properties or {}
+        local tabName = tabProps.name or "Tab"
 
-        -- Access Roblox services
-        local TweenService = game:GetService("TweenService")
-        local Players = game:GetService("Players")
-        local player = Players.LocalPlayer
+        -- Tab button in sidebar
+        local tabButton = Instance.new("TextButton")
+        tabButton.Name = tabName .. "Button"
+        tabButton.BackgroundColor3 = Color3.fromRGB(14, 49, 82) -- Default highlighted color
+        tabButton.BorderSizePixel = 0
+        tabButton.Size = UDim2.new(0, 168, 0, 28)
+        tabButton.Position = UDim2.new(0, 13, 0, #windowObj.tabs * 30 + 27)
+        tabButton.Text = tabName
+        tabButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        tabButton.Font = Enum.Font.SourceSans
+        tabButton.TextSize = 15
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 5)
+        buttonCorner.Parent = tabButton
+        tabButton.Parent = sidebar
 
-        -- ScreenGui
-        local loader = Instance.new("ScreenGui")
-        loader.Name = "loader"
-        loader.Parent = player:WaitForChild("PlayerGui")
-        loader.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        self.ui.loader = loader
+        -- Tab content frame
+        local tabFrame = Instance.new("Frame")
+        tabFrame.Name = tabName .. "Frame"
+        tabFrame.BackgroundColor3 = Color3.fromRGB(10, 12, 15)
+        tabFrame.BorderSizePixel = 0
+        tabFrame.Size = UDim2.new(1, 0, 1, 0)
+        tabFrame.Visible = false
+        tabFrame.Parent = tabContent
 
-        -- Main Loader Frame
-        local loaderFrame = Instance.new("Frame")
-        loaderFrame.Name = "loader"
-        loaderFrame.Parent = loader
-        loaderFrame.BackgroundColor3 = self.options.backgroundColor or Color3.fromRGB(3, 12, 26)
-        loaderFrame.BorderSizePixel = 0
-        loaderFrame.Position = self.options.position or UDim2.new(0.340620816, 0, 0.248743713, 0)
-        loaderFrame.Size = self.options.size or UDim2.new(0, 500, 0, 400)
-        loaderFrame.Visible = false
-        local uiCorner = Instance.new("UICorner")
-        uiCorner.CornerRadius = UDim.new(0, 9)
-        uiCorner.Parent = loaderFrame
-        self.ui.loaderFrame = loaderFrame
+        -- Topbar for the tab content
+        local topbar = Instance.new("Frame")
+        topbar.Name = "Topbar"
+        topbar.BackgroundColor3 = Color3.fromRGB(12, 12, 17)
+        topbar.BorderSizePixel = 0
+        topbar.Size = UDim2.new(1, 0, 0, 69)
+        topbar.Parent = tabFrame
 
-        -- Initial Frame (for initial state)
-        local initialFrame = Instance.new("Frame")
-        initialFrame.Name = "initialFrame"
-        initialFrame.Parent = loaderFrame
-        initialFrame.BackgroundTransparency = 1
-        initialFrame.Size = UDim2.new(1, 0, 1, 0)
-        self.ui.initialFrame = initialFrame
+        -- Main content area below topbar
+        local main = Instance.new("Frame")
+        main.Name = "Main"
+        main.BackgroundTransparency = 1
+        main.Position = UDim2.new(0, 0, 0, 71)
+        main.Size = UDim2.new(1, 0, 1, -71)
+        main.Parent = tabFrame
 
-        -- User Label
-        local userLabel = Instance.new("TextLabel")
-        userLabel.Name = "user"
-        userLabel.Parent = initialFrame
-        userLabel.BackgroundTransparency = 1
-        userLabel.Position = self.options.userLabelPosition or UDim2.new(0, 65, 0, 348)
-        userLabel.Size = self.options.userLabelSize or UDim2.new(0, 45, 0, 22)
-        userLabel.Font = Enum.Font.Unknown
-        userLabel.Text = self.options.userLabelText or player.DisplayName
-        userLabel.TextColor3 = self.options.userLabelTextColor or Color3.fromRGB(255, 255, 255)
-        userLabel.TextSize = 13
-        userLabel.TextXAlignment = Enum.TextXAlignment.Left
-        userLabel.TextYAlignment = Enum.TextYAlignment.Top
+        -- UIListLayout for sections
+        local listLayout = Instance.new("UIListLayout")
+        listLayout.Padding = UDim.new(0, 10)
+        listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        listLayout.Parent = main
 
-        -- Subscription Labels
-        local subscriptionLabel = Instance.new("TextLabel")
-        subscriptionLabel.Name = "Subscription"
-        subscriptionLabel.Parent = initialFrame
-        subscriptionLabel.BackgroundTransparency = 1
-        subscriptionLabel.Position = self.options.subscriptionPosition or UDim2.new(0, 165, 0, 22)
-        subscriptionLabel.Size = self.options.subscriptionSize or UDim2.new(0, 110, 0, 33)
-        subscriptionLabel.Font = Enum.Font.Unknown
-        subscriptionLabel.Text = self.options.subscriptionText or "Subscription"
-        subscriptionLabel.TextColor3 = self.options.subscriptionTextColor or Color3.fromRGB(255, 255, 255)
-        subscriptionLabel.TextSize = 26
-        subscriptionLabel.TextXAlignment = Enum.TextXAlignment.Left
-        subscriptionLabel.TextYAlignment = Enum.TextYAlignment.Top
+        local tabObj = {
+            button = tabButton,
+            frame = tabFrame,
+            main = main
+        }
 
-        local availableSubsLabel = Instance.new("TextLabel")
-        availableSubsLabel.Name = "AvailableSubscriptions"
-        availableSubsLabel.Parent = initialFrame
-        availableSubsLabel.BackgroundTransparency = 1
-        availableSubsLabel.Position = self.options.availableSubsPosition or UDim2.new(0, 165, 0, 55)
-        availableSubsLabel.Size = self.options.availableSubsSize or UDim2.new(0, 143, 0, 25)
-        availableSubsLabel.Font = Enum.Font.SciFi
-        availableSubsLabel.Text = self.options.availableSubsText or "Available subscriptions"
-        availableSubsLabel.TextColor3 = self.options.availableSubsTextColor or Color3.fromRGB(128, 149, 161)
-        availableSubsLabel.TextSize = 20
-        availableSubsLabel.TextXAlignment = Enum.TextXAlignment.Left
-        availableSubsLabel.TextYAlignment = Enum.TextYAlignment.Top
+        table.insert(windowObj.tabs, tabObj)
 
-        -- Button Frame
-        local buttonFrame = Instance.new("Frame")
-        buttonFrame.Name = "buttonFrame"
-        buttonFrame.Parent = initialFrame
-        buttonFrame.BackgroundColor3 = Color3.fromRGB(3, 12, 26)
-        buttonFrame.BorderSizePixel = 0
-        buttonFrame.Position = UDim2.new(0, 165, 0, 111)
-        buttonFrame.Size = UDim2.new(0, 303, 0, 73)
-        local uiCornerButtonFrame = Instance.new("UICorner")
-        uiCornerButtonFrame.CornerRadius = UDim.new(0, 10)
-        uiCornerButtonFrame.Parent = buttonFrame
-
-        -- Button
-        local button = Instance.new("TextButton")
-        button.Name = "button"
-        button.Parent = buttonFrame
-        button.BackgroundTransparency = 1
-        button.Size = UDim2.new(1, 0, 1, 0)
-        button.Font = Enum.Font.SourceSans
-        button.Text = ""
-        button.TextSize = 14
-
-        -- Overlay
-        local overlay = Instance.new("Frame")
-        overlay.Name = "overlay"
-        overlay.Parent = loaderFrame
-        overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        overlay.BackgroundTransparency = 0.3
-        overlay.BorderSizePixel = 0
-        overlay.Size = UDim2.new(1, 0, 1, 0)
-        overlay.Visible = false
-        overlay.ZIndex = 5
-        local uiCornerOverlay = Instance.new("UICorner")
-        uiCornerOverlay.CornerRadius = UDim.new(0, 9)
-        uiCornerOverlay.Parent = overlay
-        self.ui.overlay = overlay
-
-        -- Loader Selection Frame
-        local loaderSelectionFrame = Instance.new("Frame")
-        loaderSelectionFrame.Name = "loaderSelectionFrame"
-        loaderSelectionFrame.Parent = loaderFrame
-        loaderSelectionFrame.BackgroundTransparency = 1
-        loaderSelectionFrame.Size = UDim2.new(1, 0, 1, 0)
-        loaderSelectionFrame.Visible = false
-        self.ui.loaderSelectionFrame = loaderSelectionFrame
-
-        local loaderSelection = Instance.new("Frame")
-        loaderSelection.Name = "loader_selection"
-        loaderSelection.Parent = loaderSelectionFrame
-        loaderSelection.AnchorPoint = Vector2.new(0.5, 0.5)
-        loaderSelection.BackgroundColor3 = Color3.fromRGB(3, 12, 24)
-        loaderSelection.BorderSizePixel = 0
-        loaderSelection.Position = UDim2.new(0.5, 0, 0.5, 0)
-        loaderSelection.Size = UDim2.new(0, 450, 0, 350)
-        loaderSelection.ZIndex = 6
-        local uiCornerLoaderSelection = Instance.new("UICorner")
-        uiCornerLoaderSelection.CornerRadius = UDim.new(0, 3)
-        uiCornerLoaderSelection.Parent = loaderSelection
-
-        -- Close Button
-        local closeButton = Instance.new("ImageButton")
-        closeButton.Name = "Close"
-        closeButton.Parent = loaderSelection
-        closeButton.BackgroundTransparency = 1
-        closeButton.Position = UDim2.new(0, 422, 0, 29)
-        closeButton.Size = UDim2.new(0, 8, 0, 8)
-        closeButton.Image = self.options.closeButtonImage or "http://www.roblox.com/asset/?id=126084898850977"
-
-        -- Load Button
-        local loadButton = Instance.new("TextButton")
-        loadButton.Name = "Load"
-        loadButton.Parent = loaderSelection
-        loadButton.BackgroundColor3 = self.options.loadButtonColor or Color3.fromRGB(0, 123, 172)
-        loadButton.BorderSizePixel = 0
-        loadButton.Position = UDim2.new(0, 329, 0, 299)
-        loadButton.Size = UDim2.new(0, 102, 0, 32)
-        loadButton.Font = Enum.Font.SciFi
-        loadButton.Text = self.options.loadButtonText or "         Load"
-        loadButton.TextColor3 = self.options.loadButtonTextColor or Color3.fromRGB(172, 242, 253)
-        loadButton.TextSize = 21
-        local uiCornerLoadButton = Instance.new("UICorner")
-        uiCornerLoadButton.CornerRadius = UDim.new(0, 5)
-        uiCornerLoadButton.Parent = loadButton
-
-        -- Launching Frame
-        local launchingFrame = Instance.new("Frame")
-        launchingFrame.Name = "launchingFrame"
-        launchingFrame.Parent = loaderFrame
-        launchingFrame.BackgroundTransparency = 1
-        launchingFrame.Size = UDim2.new(1, 0, 1, 0)
-        launchingFrame.Visible = false
-        self.ui.launchingFrame = launchingFrame
-
-        local launching = Instance.new("Frame")
-        launching.Name = "launching"
-        launching.Parent = launchingFrame
-        launching.AnchorPoint = Vector2.new(0.5, 0.5)
-        launching.BackgroundColor3 = Color3.fromRGB(3, 12, 24)
-        launching.BorderSizePixel = 0
-        launching.Position = UDim2.new(0.5, 0, 0.5, 0)
-        launching.Size = UDim2.new(0, 310, 0, 206)
-        local uiCornerLaunching = Instance.new("UICorner")
-        uiCornerLaunching.CornerRadius = UDim.new(0, 3)
-        uiCornerLaunching.Parent = launching
-
-        -- Progress Bar Container
-        local container = Instance.new("Frame")
-        container.Name = "container"
-        container.Parent = launching
-        container.BackgroundColor3 = Color3.fromRGB(3, 17, 28)
-        container.BorderSizePixel = 0
-        container.Position = UDim2.new(0, 47, 0, 148)
-        container.Size = UDim2.new(0, 217, 0, 3)
-        local uiCornerContainer = Instance.new("UICorner")
-        uiCornerContainer.CornerRadius = UDim.new(0, 3)
-        uiCornerContainer.Parent = container
-
-        -- Progress Bar
-        local bar = Instance.new("Frame")
-        bar.Name = "bar"
-        bar.Parent = container
-        bar.BackgroundColor3 = self.options.progressBarColor or Color3.fromRGB(28, 135, 181)
-        bar.BorderSizePixel = 0
-        bar.Size = UDim2.new(0, 0, 0, 3)
-        bar.ZIndex = 2
-        local uiCornerBar = Instance.new("UICorner")
-        uiCornerBar.CornerRadius = UDim.new(0, 3)
-        uiCornerBar.Parent = bar
-        self.ui.progressBar = bar
-
-        -- Setup Interactions
-        button.MouseButton1Click:Connect(function()
-            initialFrame.Visible = false
-            loaderSelectionFrame.Visible = true
-            overlay.Visible = true
-            local tweenInfo = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            local overlayTween = TweenService:Create(overlay, tweenInfo, {BackgroundTransparency = 0.3})
-            local selectionTween = TweenService:Create(loaderSelection, tweenInfo, {BackgroundTransparency = 0})
-            overlayTween:Play()
-            selectionTween:Play()
+        -- Tab selection logic
+        tabButton.MouseButton1Click:Connect(function()
+            if windowObj.selectedTab then
+                windowObj.selectedTab.frame.Visible = false
+                windowObj.selectedTab.button.BackgroundColor3 = Color3.fromRGB(8, 19, 28) -- Unselected color
+            end
+            windowObj.selectedTab = tabObj
+            tabObj.frame.Visible = true
+            tabObj.button.BackgroundColor3 = Color3.fromRGB(14, 49, 82) -- Selected color
         end)
 
-        closeButton.MouseButton1Click:Connect(function()
-            loaderSelectionFrame.Visible = false
-            overlay.Visible = false
-            initialFrame.Visible = true
-        end)
+        -- Select first tab by default
+        if #windowObj.tabs == 1 then
+            windowObj.selectedTab = tabObj
+            tabObj.frame.Visible = true
+            tabObj.button.BackgroundColor3 = Color3.fromRGB(14, 49, 82)
+        else
+            tabButton.BackgroundColor3 = Color3.fromRGB(8, 19, 28)
+        end
 
-        loadButton.MouseButton1Click:Connect(function()
-            loaderSelectionFrame.Visible = false
-            overlay.Visible = false
-            launchingFrame.Visible = true
-            spawn(function()
-                self:startLoadingAnimation(5)
-            end)
-        end)
+        -- Method to add a section to the tab
+        function tabObj:AddSection(properties)
+            local sectionProps = properties or {}
+            local sectionName = sectionProps.name or "Section"
 
-        -- Add more UI elements (logos, images, etc.) similarly with options
-        -- For brevity, not all elements are included here, but follow the same pattern
+            local section = Instance.new("Frame")
+            section.Name = sectionName
+            section.BackgroundColor3 = Color3.fromRGB(8, 10, 19)
+            section.BorderSizePixel = 0
+            section.Size = UDim2.new(1, -20, 0, 186) -- Adjustable height
+            section.Parent = tabObj.main
+
+            local sectionTitle = Instance.new("TextLabel")
+            sectionTitle.Name = "Title"
+            sectionTitle.BackgroundTransparency = 1
+            sectionTitle.Position = UDim2.new(0, 15, 0, 8)
+            sectionTitle.Size = UDim2.new(1, -20, 0, 20)
+            sectionTitle.Font = Enum.Font.SourceSans
+            sectionTitle.Text = sectionName
+            sectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+            sectionTitle.TextSize = 14
+            sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+            sectionTitle.Parent = section
+
+            local elementLayout = Instance.new("UIListLayout")
+            elementLayout.Padding = UDim.new(0, 5)
+            elementLayout.SortOrder = Enum.SortOrder.LayoutOrder
+            elementLayout.Parent = section
+
+            local sectionObj = {
+                frame = section,
+                layout = elementLayout
+            }
+
+            -- Method to add a toggle
+            function sectionObj:AddToggle(properties)
+                local toggleProps = properties or {}
+                local toggleName = toggleProps.name or "Toggle"
+                local flag = toggleProps.flag
+                local default = toggleProps.default or false
+                local callback = toggleProps.callback or function() end
+
+                if flag then
+                    library.flags[flag] = default
+                end
+
+                local toggleFrame = Instance.new("Frame")
+                toggleFrame.Name = "Toggle"
+                toggleFrame.BackgroundTransparency = 1
+                toggleFrame.Size = UDim2.new(1, 0, 0, 20)
+                toggleFrame.Parent = section.frame
+
+                local toggleLabel = Instance.new("TextLabel")
+                toggleLabel.Name = "Label"
+                toggleLabel.BackgroundTransparency = 1
+                toggleLabel.Size = UDim2.new(0, 200, 1, 0)
+                toggleLabel.Font = Enum.Font.SourceSans
+                toggleLabel.Text = toggleName
+                toggleLabel.TextColor3 = default and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(137, 138, 144)
+                toggleLabel.TextSize = 14
+                toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+                toggleLabel.Parent = toggleFrame
+
+                local toggleButton = Instance.new("TextButton")
+                toggleButton.Name = "Button"
+                toggleButton.BackgroundColor3 = Color3.fromRGB(12, 17, 38)
+                toggleButton.BorderSizePixel = 0
+                toggleButton.Position = UDim2.new(1, -44, 0, 3)
+                toggleButton.Size = UDim2.new(0, 29, 0, 14)
+                toggleButton.Text = ""
+                local toggleCorner = Instance.new("UICorner")
+                toggleCorner.CornerRadius = UDim.new(0, 10)
+                toggleCorner.Parent = toggleButton
+                toggleButton.Parent = toggleFrame
+
+                local toggleIndicator = Instance.new("Frame")
+                toggleIndicator.Name = "Indicator"
+                toggleIndicator.BackgroundColor3 = default and Color3.fromRGB(84, 124, 253) or Color3.fromRGB(128, 135, 142)
+                toggleIndicator.BorderSizePixel = 0
+                toggleIndicator.Size = UDim2.new(0, 14, 0, 14)
+                toggleIndicator.Position = default and UDim2.new(1, -14, 0, 0) or UDim2.new(0, 0, 0, 0)
+                local indicatorCorner = Instance.new("UICorner")
+                indicatorCorner.CornerRadius = UDim.new(1, 0)
+                indicatorCorner.Parent = toggleIndicator
+                toggleIndicator.Parent = toggleButton
+
+                local function updateToggle(state)
+                    toggleIndicator.Position = state and UDim2.new(1, -14, 0, 0) or UDim2.new(0, 0, 0, 0)
+                    toggleIndicator.BackgroundColor3 = state and Color3.fromRGB(84, 124, 253) or Color3.fromRGB(128, 135, 142)
+                    toggleLabel.TextColor3 = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(137, 138, 144)
+                    if flag then
+                        library.flags[flag] = state
+                    end
+                    callback(state)
+                end
+
+                toggleButton.MouseButton1Click:Connect(function()
+                    local newState = not (flag and library.flags[flag] or default)
+                    updateToggle(newState)
+                end)
+
+                updateToggle(default)
+            end
+
+            -- Method to add a slider
+            function sectionObj:AddSlider(properties)
+                local sliderProps = properties or {}
+                local sliderName = sliderProps.name or "Slider"
+                local min = sliderProps.min or 0
+                local max = sliderProps.max or 100
+                local default = math.clamp(sliderProps.default or min, min, max)
+                local flag = sliderProps.flag
+                local callback = sliderProps.callback or function() end
+
+                if flag then
+                    library.flags[flag] = default
+                end
+
+                local sliderFrame = Instance.new("Frame")
+                sliderFrame.Name = "Slider"
+                sliderFrame.BackgroundTransparency = 1
+                sliderFrame.Size = UDim2.new(1, 0, 0, 30)
+                sliderFrame.Parent = section.frame
+
+                local sliderLabel = Instance.new("TextLabel")
+                sliderLabel.Name = "Label"
+                sliderLabel.BackgroundTransparency = 1
+                sliderLabel.Size = UDim2.new(0, 200, 0, 16)
+                sliderLabel.Font = Enum.Font.SourceSans
+                sliderLabel.Text = sliderName
+                sliderLabel.TextColor3 = Color3.fromRGB(137, 138, 144)
+                sliderLabel.TextSize = 14
+                sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+                sliderLabel.Parent = sliderFrame
+
+                local sliderBar = Instance.new("Frame")
+                sliderBar.Name = "Bar"
+                sliderBar.BackgroundColor3 = Color3.fromRGB(8, 15, 33)
+                sliderBar.BorderSizePixel = 0
+                sliderBar.Position = UDim2.new(0, 150, 0, 22)
+                sliderBar.Size = UDim2.new(0, 100, 0, 4)
+                local barCorner = Instance.new("UICorner")
+                barCorner.CornerRadius = UDim.new(0, 2)
+                barCorner.Parent = sliderBar
+                sliderBar.Parent = sliderFrame
+
+                local sliderFill = Instance.new("Frame")
+                sliderFill.Name = "Fill"
+                sliderFill.BackgroundColor3 = Color3.fromRGB(87, 126, 244)
+                sliderFill.BorderSizePixel = 0
+                sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+                local fillCorner = Instance.new("UICorner")
+                fillCorner.CornerRadius = UDim.new(0, 2)
+                fillCorner.Parent = sliderFill
+                sliderFill.Parent = sliderBar
+
+                local sliderKnob = Instance.new("Frame")
+                sliderKnob.Name = "Knob"
+                sliderKnob.BackgroundColor3 = Color3.fromRGB(84, 124, 253)
+                sliderKnob.BorderSizePixel = 0
+                sliderKnob.Position = UDim2.new((default - min) / (max - min), -6, 0, -4)
+                sliderKnob.Size = UDim2.new(0, 12, 0, 12)
+                local knobCorner = Instance.new("UICorner")
+                knobCorner.CornerRadius = UDim.new(1, 0)
+                knobCorner.Parent = sliderKnob
+                sliderKnob.Parent = sliderBar
+
+                local valueLabel = Instance.new("TextLabel")
+                valueLabel.Name = "Value"
+                valueLabel.BackgroundTransparency = 1
+                valueLabel.Position = UDim2.new(1, 10, 0, 18)
+                valueLabel.Size = UDim2.new(0, 50, 0, 11)
+                valueLabel.Font = Enum.Font.SourceSans
+                valueLabel.Text = tostring(default)
+                valueLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                valueLabel.TextSize = 13
+                valueLabel.Parent = sliderBar
+
+                local dragging = false
+                sliderKnob.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = true
+                    end
+                end)
+
+                sliderKnob.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = false
+                    end
+                end)
+
+                game:GetService("UserInputService").InputChanged:Connect(function(input)
+                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                        local mouseX = input.Position.X
+                        local barX = sliderBar.AbsolutePosition.X
+                        local barWidth = sliderBar.AbsoluteSize.X
+                        local relativeX = math.clamp(mouseX - barX, 0, barWidth)
+                        local value = min + (relativeX / barWidth) * (max - min)
+                        value = math.floor(value + 0.5) -- Round to nearest integer
+                        sliderFill.Size = UDim2.new(relativeX / barWidth, 0, 1, 0)
+                        sliderKnob.Position = UDim2.new(relativeX / barWidth, -6, 0, -4)
+                        valueLabel.Text = tostring(value)
+                        if flag then
+                            library.flags[flag] = value
+                        end
+                        callback(value)
+                    end
+                end)
+            end
+
+            return sectionObj
+        end
+
+        return tabObj
     end
 
-    -- Method to start loading animation
-    function library:startLoadingAnimation(duration)
-        local maxWidth = 217
-        local steps = 100
-        local stepTime = duration / steps
-        for i = 1, steps do
-            local progress = i / steps
-            local targetWidth = math.floor(maxWidth * progress)
-            self.ui.progressBar.Size = UDim2.new(0, targetWidth, 0, 3)
-            wait(stepTime)
-        end
-        if self.options.onLoadingComplete then
-            self.options.onLoadingComplete()
-        end
-    end
-
-    return library
+    return windowObj
 end
 
-return UILibrary
+return library
