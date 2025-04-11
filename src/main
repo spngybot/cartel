@@ -58,7 +58,7 @@ local possibleHitParts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", 
 -----------------------------------------------------
 -- UI Setup
 -----------------------------------------------------
-local uiLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/spngybot/cartel/refs/heads/main/libs/ui?token=GHSAT0AAAAAADBPWRD6MWIKDZM2P4HGVDFUZ7O4PDA"))()
+local uiLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/spngybot/cartel/refs/heads/main/libs/ui"))()
 local flags = uiLibrary.flags
 local config_flags = uiLibrary.config_flags
 
