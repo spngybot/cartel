@@ -1,3 +1,28 @@
+--[[
+TODO:
+-- Enhancements
+    - Optimize loops
+    - Calculate FOV Circle [Field Of View jargi]
+    - Add font selection
+    - Chams glow options
+
+-- New Features
+    - Speed hack
+    - Auto-fire toggle [?]
+    - Offscreen indicators
+    - Enhance viewangle
+    - Chams glow effect
+    - Noclip mode [?]
+    - Teleport feature [?]
+]]--
+
+--[[
+FIXME:
+    - Glow Chams stops working after a while
+    - Optimization suht sitt
+]]--
+
+
 -----------------------------------------------------
 -- Services and Global Variables
 -----------------------------------------------------
@@ -33,7 +58,7 @@ local possibleHitParts = {"Head", "Torso", "Left Arm", "Right Arm", "Left Leg", 
 -----------------------------------------------------
 -- UI Setup
 -----------------------------------------------------
-local uiLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/spngybot/cartel/refs/heads/main/UI%20LIB"))()
+local uiLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/spngybot/cartel/refs/heads/main/libs/ui?token=GHSAT0AAAAAADBPWRD6MWIKDZM2P4HGVDFUZ7O4PDA"))()
 local flags = uiLibrary.flags
 local config_flags = uiLibrary.config_flags
 
@@ -135,10 +160,20 @@ espSection:slider({name="Font Size", flag="fontSize", min=5, max=25, default=11}
 espSection:slider({name="Max Distance", flag="espMaxDistance", min=20, max=1000, default=200})
 
 -- World Section
-local objectSection = visualTab:section({name = "Object", side = "right"})
-
--- Lighting Section
-local lightingSection = visualTab:section({name = "World", side = "right"})
+local worldSection = visualTab:section({name = "World", side = "right"})
+worldSection:toggle({name="Show Broken", flag="showBroken", default=false})
+worldSection:toggle({name="Register ESP", flag="objectRegister", default=false})
+worldSection:colorpicker({name="Register", flag="registerColor", color=Color3.fromRGB(255, 0, 128)})
+worldSection:toggle({name="Safe ESP", flag="objectSafe", default=false})
+worldSection:dropdown({name="Safe Rarity", flag="safeDropdown", items={"Small", "Big"}, multi=true})
+worldSection:colorpicker({name="Small Safe", flag="smallSafeColor", color=Color3.fromRGB(255, 255, 0)})
+worldSection:colorpicker({name="Medium Safe", flag="mediumSafeColor", color=Color3.fromRGB(255, 128, 0)})
+worldSection:toggle({name="Scrap ESP", flag="objectScrap", default=false})
+worldSection:dropdown({name="Scrap Rarity", flag="scrapDropdown", items={"Common", "Legendary"}, multi=true})
+worldSection:toggle({name="Crate ESP", flag="objectCrate", default=false})
+worldSection:dropdown({name="Crate Rarity", flag="crateDropdown", items={"Common", "Legendary"}, multi=true})
+worldSection:toggle({name="Dealer ESP", flag="objectDealer", default=false})
+worldSection:colorpicker({name="Dealer", flag="dealerColor", color=Color3.fromRGB(255, 0, 255)})
 
 -- Camera Section
 local cameraSection = miscTab:section({name = "Camera", side = "left"})
@@ -209,6 +244,7 @@ playerSection:playerlist()
 local xSection = configTab:section({name = "x", side = "right"})
 xSection:toggle({name = "Watermark", flag = "watermark", default = false, callback = function(bool) W.toggle_watermark(bool) end})
 xSection:toggle({name = "keybindlist", flag = "keybindlist", default = false, callback = function(bool) W.toggle_list(bool) end})
+xSection:colorpicker({color = Color3.fromHex("#6464FF"), flag = "accent", callback = function(color) uiLibrary:update_theme("accent", color) end})
 
 local configSection = configTab:section({name = "Configuration System", side = "left"})
 configSection:keybind({name = "UI Bind", default = Enum.KeyCode.End, callback = W.set_menu_visibility})
@@ -252,6 +288,7 @@ uiLibrary:config_list_update()
 -----------------------------------------------------
 -- FOV Drawings
 -----------------------------------------------------
+--[[
 local aimFov = Drawing.new("Circle")
 aimFov.Visible = flags["showAimFov"]
 aimFov.Transparency = 1
@@ -265,6 +302,7 @@ silentFov.Transparency = 1
 silentFov.Color = Color3.new(1,1,1)
 silentFov.Thickness = 1
 silentFov.Radius = flags["silentFov"]
+--]]
 
 -----------------------------------------------------
 -- Character Cache
@@ -784,6 +822,90 @@ Players.PlayerAdded:Connect(function(plr)
 end)
 
 -----------------------------------------------------
+-- World ESP Module
+-----------------------------------------------------
+local WorldESP = {}
+
+local worldEspItems = {}
+local worldEspCache = {}
+local dealerEspCache = {}
+
+function WorldESP:CreateESP(object, text, color)
+    local label = ESP:Create("TextLabel", {
+        Parent = ScreenGui,
+        Size = UDim2.new(0, 100, 0, 20),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundTransparency = 1,
+        TextColor3 = color,
+        TextStrokeTransparency = 0.5,
+        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+        Text = text,
+        Font = Enum.Font.Code,
+        TextSize = flags["fontSize"],
+        RichText = true
+    })
+    return label
+end
+
+function WorldESP:AddObject(object)
+    local mainPart = object:FindFirstChild("MainPart")
+    if not mainPart then return end
+    
+    local esp = {
+        Label = nil,
+        Object = object,
+        MainPart = mainPart,
+        Values = object:FindFirstChild("Values")
+    }
+    
+    worldEspItems[object] = esp
+    worldEspCache[object] = true
+    
+    object.AncestryChanged:Connect(function()
+        if not object.Parent then
+            if worldEspItems[object] and worldEspItems[object].Label then
+                worldEspItems[object].Label:Destroy()
+            end
+            worldEspItems[object] = nil
+            worldEspCache[object] = nil
+        end
+    end)
+end
+
+for _, object in ipairs(workspace.Map.BredMakurz:GetChildren()) do
+    if object:FindFirstChild("MainPart") then
+        WorldESP:AddObject(object)
+    end
+end
+
+workspace.Map.BredMakurz.ChildAdded:Connect(function(object)
+    if object:FindFirstChild("MainPart") then
+        WorldESP:AddObject(object)
+    end
+end)
+
+-----------------------------------------------------
+-- Misc
+-----------------------------------------------------
+function checkLockpick(...)
+    local frames = { ... };
+    for i,v in pairs(frames) do
+        if not originalScales[v] then   
+            originalScales[v] = v.Parent.UIScale.Scale
+        end
+        if not flags["autoLockpick"] then
+            v.Parent.UIScale.Scale = 1
+        end
+        if flags["autoLockpick"] then
+            v.Parent.UIScale.Scale = 10
+        end
+        if (v.AbsolutePosition.Y >= 450 and v.AbsolutePosition.Y <= 550) then
+            mouse1click(); task.wait(0.1); mouse1release();
+        end
+    end
+end
+
+-----------------------------------------------------
 -- Optimized Main Update Loop for ESP and FOV
 -----------------------------------------------------
 RunService.RenderStepped:Connect(function(dt)
@@ -1013,7 +1135,72 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Update FOV circles
+    for object, esp in pairs(worldEspItems) do
+        if not (esp.Object and esp.Object.Parent and esp.MainPart and esp.Values) then
+            if esp.Label then
+                esp.Label:Destroy()
+            end
+            worldEspItems[object] = nil
+            continue
+        end
+    
+        local name = esp.Object.Name
+        local broken = esp.Values:FindFirstChild("Broken") and esp.Values.Broken.Value or false
+        local screenPos, onScreen = WorldToScreenPoint(Camera, esp.MainPart.Position + Vector3.new(0, 2, 0))
+        local distance = (cameraPos - esp.MainPart.Position).Magnitude
+        local shouldShow = false
+        local text = broken and "(Broken) " or ""
+        local color = Color3.fromRGB(255, 255, 255)
+    
+        if distance > flags["espMaxDistance"] or not onScreen then
+            if esp.Label then
+                esp.Label.Visible = false
+            end
+            continue
+        end
+    
+        if string.find(name, "Register") and flags["objectRegister"] then
+            shouldShow = true
+            text = text .. "Register"
+            color = flags["registerColor"].Color
+        elseif string.find(name, "SmallSafe") and flags["objectSafe"] and table.find(flags["safeDropdown"], "Small") then
+            shouldShow = true
+            text = text .. "Small Safe"
+            color = flags["smallSafeColor"].Color
+        elseif string.find(name, "MediumSafe") and flags["objectSafe"] and table.find(flags["safeDropdown"], "Big") then
+            shouldShow = true
+            text = text .. "Medium Safe"
+            color = flags["mediumSafeColor"].Color
+        elseif string.find(name, "Scrap") and flags["objectScrap"] then
+            shouldShow = true
+            text = text .. "Scrap"
+            color = Color3.fromRGB(0, 255, 0)
+        elseif string.find(name, "Crate") and flags["objectCrate"] then
+            shouldShow = true
+            text = text .. "Crate"
+            color = Color3.fromRGB(0, 255, 255)
+        elseif name == "Dealer" and flags["objectDealer"] then
+            shouldShow = true
+            text = text .. "Dealer"
+            color = Color3.fromRGB(255, 0, 255)
+        end
+    
+        if shouldShow and (flags["showBroken"] or not broken) then
+            if not esp.Label then
+                esp.Label = WorldESP:CreateESP(object, text, color)
+            end
+            esp.Label.Visible = true
+            esp.Label.Position = UDim2.new(0, screenPos.X, 0, screenPos.Y)
+            esp.Label.Text = text
+            esp.Label.TextColor3 = color
+            esp.Label.TextSize = flags["fontSize"]
+        elseif esp.Label then
+            esp.Label.Visible = false
+        end
+    end
+
+    -- Update FOV circles (commented out as per original)
+    --[[
     if flags["aimEnabled"] and flags["showAimFov"] then
         aimFov.Position = mousePos
         aimFov.Radius = flags["aimFov"]
@@ -1033,28 +1220,8 @@ RunService.RenderStepped:Connect(function(dt)
     else
         silentFov.Visible = false
     end
+    --]]
 end)
-
------------------------------------------------------
--- Misc
------------------------------------------------------
-function checkLockpick(...)
-    local frames = { ... };
-    for i,v in pairs(frames) do
-        if not originalScales[v] then   
-            originalScales[v] = v.Parent.UIScale.Scale
-        end
-        if not flags["autoLockpick"] then
-            v.Parent.UIScale.Scale = 1
-        end
-        if flags["autoLockpick"] then
-            v.Parent.UIScale.Scale = 10
-        end
-        if (v.AbsolutePosition.Y >= 450 and v.AbsolutePosition.Y <= 550) then
-            mouse1click(); task.wait(0.1); mouse1release();
-        end
-    end
-end
 
 -----------------------------------------------------
 -- Update Aimbot every Heartbeat
