@@ -1078,8 +1078,6 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Update FOV circles (commented out as per original)
-    --[[
     if flags["aimEnabled"] and flags["showAimFov"] then
         aimFov.Position = mousePos
         aimFov.Radius = flags["aimFov"]
@@ -1099,7 +1097,6 @@ RunService.RenderStepped:Connect(function(dt)
     else
         silentFov.Visible = false
     end
-    --]]
 end)
 
 -----------------------------------------------------
