@@ -169,9 +169,7 @@ worldSection:dropdown({name="Safe Rarity", flag="safeDropdown", items={"Small", 
 worldSection:colorpicker({name="Small Safe", flag="smallSafeColor", color=Color3.fromRGB(255, 255, 0)})
 worldSection:colorpicker({name="Medium Safe", flag="mediumSafeColor", color=Color3.fromRGB(255, 128, 0)})
 worldSection:toggle({name="Scrap ESP", flag="objectScrap", default=false})
-worldSection:dropdown({name="Scrap Rarity", flag="scrapDropdown", items={"Bad", "Good", "Rare", "Legendary"}, multi=true})
-worldSection:colorpicker({name="Scrap Color", flag="scrapColor", color=Color3.fromRGB(255, 255, 255)})
-worldSection:slider({name="Scrap Distance", flag="scrapDistance", min=20, max=2000, default=2000})
+worldSection:dropdown({name="Scrap Rarity", flag="scrapDropdown", items={"Common", "Legendary"}, multi=true})
 worldSection:toggle({name="Crate ESP", flag="objectCrate", default=false})
 worldSection:dropdown({name="Crate Rarity", flag="crateDropdown", items={"Common", "Legendary"}, multi=true})
 worldSection:toggle({name="Dealer ESP", flag="objectDealer", default=false})
@@ -179,6 +177,8 @@ worldSection:colorpicker({name="Dealer", flag="dealerColor", color=Color3.fromRG
 
 -- Camera Section
 local cameraSection = miscTab:section({name = "Camera", side = "left"})
+cameraSection:toggle({name="Enable Ambience", flag="cameraAmbience", default=false})
+cameraSection:colorpicker({name="Ambience Color", flag="cameraAmbienceColor", color=Color3.fromRGB(118,118,118)})
 
 local utilitySection = miscTab:section({name = "Utility", side = "left"})
 utilitySection:toggle({name="Auto Lockpick", flag="autoLockpick", default=false, callback=function(bool)
@@ -290,6 +290,7 @@ uiLibrary:config_list_update()
 -----------------------------------------------------
 -- FOV Drawings
 -----------------------------------------------------
+
 local aimFov = Drawing.new("Circle")
 aimFov.Visible = flags["showAimFov"]
 aimFov.Transparency = 1
@@ -303,6 +304,7 @@ silentFov.Transparency = 1
 silentFov.Color = Color3.new(1,1,1)
 silentFov.Thickness = 1
 silentFov.Radius = flags["silentFov"]
+
 
 -----------------------------------------------------
 -- Character Cache
@@ -824,6 +826,65 @@ end)
 -----------------------------------------------------
 -- World ESP Module
 -----------------------------------------------------
+local WorldESP = {}
+
+local worldEspItems = {}
+local worldEspCache = {}
+local dealerEspCache = {}
+
+function WorldESP:CreateESP(object, text, color)
+    local label = ESP:Create("TextLabel", {
+        Parent = ScreenGui,
+        Size = UDim2.new(0, 100, 0, 20),
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        BackgroundTransparency = 1,
+        TextColor3 = color,
+        TextStrokeTransparency = 0.5,
+        TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+        Text = text,
+        Font = Enum.Font.Code,
+        TextSize = flags["fontSize"],
+        RichText = true
+    })
+    return label
+end
+
+function WorldESP:AddObject(object)
+    local mainPart = object:FindFirstChild("MainPart")
+    if not mainPart then return end
+    
+    local esp = {
+        Label = nil,
+        Object = object,
+        MainPart = mainPart,
+        Values = object:FindFirstChild("Values")
+    }
+    
+    worldEspItems[object] = esp
+    worldEspCache[object] = true
+    
+    object.AncestryChanged:Connect(function()
+        if not object.Parent then
+            if worldEspItems[object] and worldEspItems[object].Label then
+                worldEspItems[object].Label:Destroy()
+            end
+            worldEspItems[object] = nil
+            worldEspCache[object] = nil
+        end
+    end)
+end
+
+for _, object in ipairs(workspace.Map.BredMakurz:GetChildren()) do
+    if object:FindFirstChild("MainPart") then
+        WorldESP:AddObject(object)
+    end
+end
+
+workspace.Map.BredMakurz.ChildAdded:Connect(function(object)
+    if object:FindFirstChild("MainPart") then
+        WorldESP:AddObject(object)
+    end
+end)
 
 -----------------------------------------------------
 -- Misc
@@ -1076,6 +1137,62 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
+    for object, esp in pairs(worldEspItems) do
+        if not (esp.Object and esp.Object.Parent and esp.MainPart and esp.Values) then
+            if esp.Label then
+                esp.Label:Destroy()
+            end
+            worldEspItems[object] = nil
+            continue
+        end
+    
+        local name = esp.Object.Name
+        local broken = esp.Values:FindFirstChild("Broken") and esp.Values.Broken.Value or false
+        local screenPos, onScreen = WorldToScreenPoint(Camera, esp.MainPart.Position + Vector3.new(0, 2, 0))
+        local distance = (cameraPos - esp.MainPart.Position).Magnitude
+        local shouldShow = false
+        local text = broken and "(Broken) " or ""
+        local color = Color3.fromRGB(255, 255, 255)
+    
+        if distance > flags["espMaxDistance"] or not onScreen then
+            if esp.Label then
+                esp.Label.Visible = false
+            end
+            continue
+        end
+    
+        if string.find(name, "Register") and flags["objectRegister"] then
+            shouldShow = true
+            text = text .. "Register"
+            color = flags["registerColor"].Color
+        elseif string.find(name, "SmallSafe") and flags["objectSafe"] and table.find(flags["safeDropdown"], "Small") then
+            shouldShow = true
+            text = text .. "Small Safe"
+            color = flags["smallSafeColor"].Color
+        elseif string.find(name, "MediumSafe") and flags["objectSafe"] and table.find(flags["safeDropdown"], "Big") then
+            shouldShow = true
+            text = text .. "Medium Safe"
+            color = flags["mediumSafeColor"].Color
+        elseif string.find(name, "Scrap") and flags["objectScrap"] then
+            shouldShow = true
+            text = text .. "Scrap"
+            color = Color3.fromRGB(0, 255, 0)
+        end
+    
+        if shouldShow and (flags["showBroken"] or not broken) then
+            if not esp.Label then
+                esp.Label = WorldESP:CreateESP(object, text, color)
+            end
+            esp.Label.Visible = true
+            esp.Label.Position = UDim2.new(0, screenPos.X, 0, screenPos.Y)
+            esp.Label.Text = text
+            esp.Label.TextColor3 = color
+            esp.Label.TextSize = flags["fontSize"]
+        elseif esp.Label then
+            esp.Label.Visible = false
+        end
+    end
+
     if flags["aimEnabled"] and flags["showAimFov"] then
         aimFov.Position = mousePos
         aimFov.Radius = flags["aimFov"]
@@ -1094,6 +1211,10 @@ RunService.RenderStepped:Connect(function(dt)
         silentFov.Visible = true
     else
         silentFov.Visible = false
+    end
+
+    if flags["cameraAmbience"] then
+        Lighting.Ambient = flags["cameraAmbienceColor"].Color
     end
 end)
 
@@ -1115,4 +1236,3 @@ RunService.Heartbeat:Connect(function(dt)
         end
     end
 end)
-
