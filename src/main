@@ -1078,17 +1078,6 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
-    -- Update scrap ESP colors
-    for _, frame in pairs(scrapFolder:GetChildren()) do
-        if frame:IsA("Frame") then
-            for _, label in pairs(frame:GetChildren()) do
-                if label:IsA("TextLabel") then
-                    label.TextColor3 = flags["scrapColor"].Color
-                end
-            end
-        end
-    end
-
     -- Update FOV circles (commented out as per original)
     --[[
     if flags["aimEnabled"] and flags["showAimFov"] then
