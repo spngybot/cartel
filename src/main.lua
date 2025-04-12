@@ -179,6 +179,7 @@ worldSection:colorpicker({name="Dealer", flag="dealerColor", color=Color3.fromRG
 local cameraSection = miscTab:section({name = "Camera", side = "left"})
 cameraSection:toggle({name="Enable Ambience", flag="cameraAmbience", default=false})
 cameraSection:colorpicker({name="Ambience Color", flag="cameraAmbienceColor", color=Color3.fromRGB(118,118,118)})
+cameraSection:toggle({name="test"})
 
 local utilitySection = miscTab:section({name = "Utility", side = "left"})
 utilitySection:toggle({name="Auto Lockpick", flag="autoLockpick", default=false, callback=function(bool)
