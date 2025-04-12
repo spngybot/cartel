@@ -290,7 +290,6 @@ uiLibrary:config_list_update()
 -----------------------------------------------------
 -- FOV Drawings
 -----------------------------------------------------
---[[
 local aimFov = Drawing.new("Circle")
 aimFov.Visible = flags["showAimFov"]
 aimFov.Transparency = 1
@@ -304,7 +303,6 @@ silentFov.Transparency = 1
 silentFov.Color = Color3.new(1,1,1)
 silentFov.Thickness = 1
 silentFov.Radius = flags["silentFov"]
---]]
 
 -----------------------------------------------------
 -- Character Cache
