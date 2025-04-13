@@ -177,9 +177,6 @@ worldSection:colorpicker({name="Dealer", flag="dealerColor", color=Color3.fromRG
 
 -- Camera Section
 local cameraSection = miscTab:section({name = "Camera", side = "left"})
-cameraSection:toggle({name="Enable Ambience", flag="cameraAmbience", default=false})
-cameraSection:colorpicker({name="Ambience Color", flag="cameraAmbienceColor", color=Color3.fromRGB(118,118,118)})
-cameraSection:toggle({name="test"})
 
 local utilitySection = miscTab:section({name = "Utility", side = "left"})
 utilitySection:toggle({name="Auto Lockpick", flag="autoLockpick", default=false, callback=function(bool)
@@ -1178,6 +1175,14 @@ RunService.RenderStepped:Connect(function(dt)
             shouldShow = true
             text = text .. "Scrap"
             color = Color3.fromRGB(0, 255, 0)
+        elseif string.find(name, "Crate") and flags["objectCrate"] then
+            shouldShow = true
+            text = text .. "Crate"
+            color = Color3.fromRGB(0, 255, 255)
+        elseif name == "Dealer" and flags["objectDealer"] then
+            shouldShow = true
+            text = text .. "Dealer"
+            color = Color3.fromRGB(255, 0, 255)
         end
     
         if shouldShow and (flags["showBroken"] or not broken) then
@@ -1194,6 +1199,7 @@ RunService.RenderStepped:Connect(function(dt)
         end
     end
 
+    -- Update FOV circles
     if flags["aimEnabled"] and flags["showAimFov"] then
         aimFov.Position = mousePos
         aimFov.Radius = flags["aimFov"]
@@ -1212,10 +1218,6 @@ RunService.RenderStepped:Connect(function(dt)
         silentFov.Visible = true
     else
         silentFov.Visible = false
-    end
-
-    if flags["cameraAmbience"] then
-        Lighting.Ambient = flags["cameraAmbienceColor"].Color
     end
 end)
 
